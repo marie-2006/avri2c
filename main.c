@@ -17,7 +17,6 @@
 uint8_t opmode = OPMODE_NORMAL;
 uint16_t settime = 0;
 
-
 uint16_t time_1000ms_prev = 0;
 uint16_t time_100ms_prev = 0;
 uint16_t time_10ms_prev = 0;
