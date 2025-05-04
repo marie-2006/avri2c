@@ -172,31 +172,24 @@ char *int32_to_text_decimal (int32_t value, uint8_t minlen)
     text_buffer [--wp] = ' ';
   }
 
-  // while (text_buffer [wp] == '0') {
-  //   text_buffer [wp++] = ' ';
-  // }
-
   return text_buffer;
 } /* int32_to_text_decimal */
 
 
-// const char *uint32_to_text_decimal (uint32_t value)
-// {
-//   uint8_t wp = 10;
-//
-//   text_buffer [wp] = 0;
-//
-//   while (wp != 0) {
-//     text_buffer [--wp] = '0' + (value % 10);
-//     value /= 10;
-//   }
-//
-//   while (text_buffer [wp] == '0') {
-//     text_buffer [wp++] = ' ';
-//   }
-//
-//   return text_buffer;
-// } /* uint32_to_text_decimal */
+const char *uint32_to_text (uint32_t value)
+{
+  uint8_t wp = 10;
+
+  text_buffer [wp] = 0;
+
+  while (wp != 0) {
+    text_buffer [--wp] = '0' + (value % 10);
+    value /= 10;
+    if (value == 0) break;
+  }
+
+  return text_buffer + wp;
+} /* uint32_to_text */
 
 
 //char *uint8_to_text_decimal (uint8_t value)

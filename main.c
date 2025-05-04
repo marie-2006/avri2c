@@ -12,14 +12,57 @@
 #define OPMODE_NORMAL   0
 #define OPMODE_SETTIME  1
 
+#define TASTE_NIX               (0)
+#define TASTE_SEK               (1)
+#define TASTE_MIN               (2)
+#define TASTE_H                 (3)
+#define TASTE_STORE_RTC         (4)
+#define TASTE_STORE_RTC         (4)
+#define TASTE_AUSGABE           (5)
+#define TASTE_ZEAHLER           (6)
+#define TASTE_ZEAHLER_ZURUECK   (7)
+
 /******************************************************************************/
 
 uint8_t opmode = OPMODE_NORMAL;
 uint16_t settime = 0;
 
+uint8_t tasten_feld = 0;
+uint8_t tasten_feld_prev = 0;
+
 uint16_t time_1000ms_prev = 0;
 uint16_t time_100ms_prev = 0;
 uint16_t time_10ms_prev = 0;
+
+uint8_t z = 0;
+
+/******************************************************************************/
+
+
+ // von Marie
+uint8_t tastenabfrage (void)
+{
+  uint8_t tasten_neu = 0;
+  uint8_t taste = TASTE_NIX;
+
+  tasten_feld = ~PINK;
+
+  tasten_neu = tasten_feld_prev ^ tasten_feld;
+  tasten_neu &= tasten_feld;
+
+  if      (tasten_neu & (1 << 4)) taste = TASTE_SEK;
+  else if (tasten_neu & (1 << 5)) taste = TASTE_MIN;
+  else if (tasten_neu & (1 << 6)) taste = TASTE_H;
+  else if (tasten_neu & (1 << 7)) taste = TASTE_AUSGABE;
+  else if (tasten_neu & (1 << 0)) taste = TASTE_ZEAHLER;
+  else if (tasten_neu & (1 << 1)) taste = TASTE_ZEAHLER_ZURUECK;
+
+
+  tasten_feld_prev = tasten_feld;
+  return taste;
+} /* tastenabfrage */
+
+
 
 /******************************************************************************/
 
@@ -90,19 +133,66 @@ int main (void)
 
   show_mode ();
 
-  // serial_print_text ("\r\n");
-  // serial_print_text ("\r\n");
-  // serial_print_text ("\r\n");
-  // serial_print_text ("*** Hallo Marie ***");
-  // serial_print_text ("\r\n");
-  // serial_print_text ("\r\n");
-  // serial_print_text ("\r\n");
-  // serial_print_text ("\r\n");
+  serial_print_text ("\r\n");
+  serial_print_text ("\r\n");
+  serial_print_text ("*** Hallo Marie ***");
+  serial_print_text ("\r\n");
 
   while (1) {
+    uint8_t  taste = 0;       // Tastencode
     uint8_t  rxchar = 0;
     uint16_t time_ms = 0;
     //int32_t x_abs = 0;
+
+    taste = tastenabfrage ();
+
+    if (taste == TASTE_SEK) {
+      serial_print_text ("K: ");
+      serial_print_text (uint32_to_text_hex (taste));
+      serial_print_text (" -> ");
+      serial_print_text (uint32_to_text (taste));
+      serial_print_text ("\r\n");
+    }
+
+    if (taste == TASTE_AUSGABE) {
+      serial_print_text ("Hi there!");
+    }
+
+    if (taste == TASTE_ZEAHLER) {
+      serial_print_text ("z=");
+      serial_print_text (  uint32_to_text (z)   );
+      serial_print_text ("\r\n");
+      z++;
+    }
+
+    if (taste == TASTE_ZEAHLER_ZURUECK) {
+      //z = z - 1;
+      serial_print_text ("z=");
+      serial_print_text ( uint32_to_text (z) );
+      serial_print_text ("\r\n");
+      z--;
+    }
+
+
+    // if (taste == TASTE_SEK) {
+    //   zeit_sekunden_bcd = 0x00;
+    //   zeit_anzeigen = 1;
+    // }
+    //
+    // else if (taste == TASTE_MIN) {
+    //   zeit_minuten_bcd = bcd_plus_eins (zeit_minuten_bcd, 0x60);
+    //   zeit_anzeigen = 1;
+    // }
+    //
+    // else if (taste == TASTE_H) {
+    //   zeit_stunden_bcd = bcd_plus_eins (zeit_stunden_bcd, 0x24);
+    //   zeit_anzeigen = 1;
+    // }
+    //
+    // else if (taste == TASTE_STORE_RTC) {
+    //   rtc_write ();
+    // }
+
 
     time_ms = millis ();
 
@@ -115,7 +205,6 @@ int main (void)
 
       update_time ();
 
-#if 1
       lcd_set_cursor (12, 0);
       //lcd_print_text (uint16_to_text_hex (time_ms));
       //lcd_print_text (uint16_to_text_decimal (time_ms));
@@ -177,8 +266,6 @@ int main (void)
       else {
         lcd_print_text ("  xxx.xx");
       }
-#endif
-
     }
 
     if ((time_ms - time_100ms_prev) >= 100) {
@@ -191,7 +278,6 @@ int main (void)
       time_10ms_prev = time_ms;
     }
 
-#if 1
     if (rxchar == 0) {
       rxchar = uart0_rx ();
     }
@@ -301,13 +387,6 @@ int main (void)
         }
       }
     }
-#endif
-
-    // cnt ++;
-    // if (cnt == 0) {
-    //   PORTB ^= (1 << 7);
-    //   uart0_tx ('a' + (txcnt++ & 0x0f));
-    // }
   }
 
 #if defined(__CODEVISIONAVR__)

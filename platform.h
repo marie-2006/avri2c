@@ -36,6 +36,7 @@ char *int32_to_text_decimal (int32_t value, uint8_t minlen);
 char *uint32_to_text_hex (uint32_t value);
 char *insert_decimal_point (char *text, uint8_t pos);
 char *rightmost (char *text, uint8_t n);
+const char *uint32_to_text (uint32_t value);
 
 #if defined(__CODEVISIONAVR__)
 void sei (void);
