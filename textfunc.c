@@ -9,8 +9,7 @@
 
 /******************************************************************************/
 
-#define MAX_TEXT_BUFFER 25
-static char text_buffer [MAX_TEXT_BUFFER];
+char text_buffer [MAX_TEXT_BUFFER];
 
 /******************************************************************************/
 
@@ -145,9 +144,9 @@ char *insert_decimal_point (char *text, uint8_t pos)
 } /* insert_decimal_point */
 
 
-char *int32_to_text_decimal (int32_t value, uint8_t minlen)
+void int32_to_text_decimal (int32_t value, uint8_t minlen)
 {
-  uint8_t wp = 10;
+  uint8_t wp = TEXT_BUFFER_RIGHT;
   uint8_t neg = 0;
 
   if (value < 0) {
@@ -158,7 +157,7 @@ char *int32_to_text_decimal (int32_t value, uint8_t minlen)
   text_buffer [wp] = 0;
 
   while (wp != 0) {
-    text_buffer [--wp] = '0' + (value % 10);
+    text_buffer [--wp] = '0' + value % 10;
     value /= 10;
     if (minlen) minlen--;
     if ((value == 0) && (minlen == 0)) {
@@ -171,8 +170,6 @@ char *int32_to_text_decimal (int32_t value, uint8_t minlen)
   while (wp != 0) {
     text_buffer [--wp] = ' ';
   }
-
-  return text_buffer;
 } /* int32_to_text_decimal */
 
 
@@ -207,6 +204,14 @@ const char *uint32_to_text (uint32_t value)
 //
 //  return text_buffer;
 //} /* uint8_to_text_decimal */
+
+
+void insert_decimal_point10 ()
+{
+  text_buffer [TEXT_BUFFER_RIGHT + 1] = 0;
+  text_buffer [TEXT_BUFFER_RIGHT + 0] = text_buffer [TEXT_BUFFER_RIGHT - 1];
+  text_buffer [TEXT_BUFFER_RIGHT - 1] = '.';
+} /* insert_decimal_point10 */
 
 
 /******************************************************************************/

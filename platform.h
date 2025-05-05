@@ -32,11 +32,12 @@ uint8_t uart0_rx (void);
 void serial_print_text (const char *text);
 
 char hexdigit (uint8_t value);
-char *int32_to_text_decimal (int32_t value, uint8_t minlen);
+void int32_to_text_decimal (int32_t value, uint8_t minlen);
 char *uint32_to_text_hex (uint32_t value);
 char *insert_decimal_point (char *text, uint8_t pos);
 char *rightmost (char *text, uint8_t n);
 const char *uint32_to_text (uint32_t value);
+void insert_decimal_point10 ();
 
 #if defined(__CODEVISIONAVR__)
 void sei (void);
@@ -99,13 +100,18 @@ uint8_t keypad_read (void);
 
 /******************************************************************************/
 
-extern uint8_t time_hour,
-               time_minutes,
-               time_seconds;
+extern uint8_t zeit_sekunden_bcd;
+extern uint8_t zeit_minuten_bcd;
+extern uint8_t zeit_stunden_bcd;
 
-void update_time (void);
 void rtc_read (void);
 void rtc_write (void);
+
+/******************************************************************************/
+
+#define MAX_TEXT_BUFFER 16
+#define TEXT_BUFFER_RIGHT 10
+extern char text_buffer [MAX_TEXT_BUFFER];
 
 /******************************************************************************/
 

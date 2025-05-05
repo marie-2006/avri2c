@@ -24,22 +24,28 @@
 
 /******************************************************************************/
 
-uint8_t opmode = OPMODE_NORMAL;
+uint8_t  opmode = OPMODE_NORMAL;
 uint16_t settime = 0;
 
-uint8_t tasten_feld = 0;
-uint8_t tasten_feld_prev = 0;
+uint8_t  tasten_feld = 0;
+uint8_t  tasten_feld_prev = 0;
 
 uint16_t time_1000ms_prev = 0;
 uint16_t time_100ms_prev = 0;
 uint16_t time_10ms_prev = 0;
 
-uint8_t z = 0;
+uint8_t  zeit_sekunden_bcd = 0;
+uint8_t  zeit_minuten_bcd = 0;
+uint8_t  zeit_stunden_bcd = 0;
 
 /******************************************************************************/
 
+uint8_t z = 0;
 
- // von Marie
+/******************************************************************************/
+/* Tasten vom Board abfragen */
+
+
 uint8_t tastenabfrage (void)
 {
   uint8_t tasten_neu = 0;
@@ -62,6 +68,82 @@ uint8_t tastenabfrage (void)
   return taste;
 } /* tastenabfrage */
 
+
+/******************************************************************************/
+/* Zeitfunktion & Sekunden hochzählen */
+
+
+void bcd_zaehler_anzeigen (uint8_t zaehler_wert)
+{
+  uint8_t einer =   zaehler_wert & 0x0f;
+  uint8_t zehner = (zaehler_wert >> 4) & 0x0f;
+
+  lcd_print_char ('0' + zehner);
+  lcd_print_char ('0' + einer);
+} /* bcd_zaehler_anzeigen */
+
+
+uint8_t bcd_plus_eins (uint8_t x, uint8_t limit)
+{
+  x += 1;
+  if ((x & 0xf) >= 0x0a) { // BCD Überlauf
+    x += 0x06;
+  }
+  if (x >= limit) x = 0;
+
+  return x;
+} /* bcd_plus_eins */
+
+
+uint8_t zeit_weiter_eine_sekunde (void)
+{
+  zeit_sekunden_bcd = bcd_plus_eins (zeit_sekunden_bcd, 0x60);
+  if (zeit_sekunden_bcd == 0) { /* Sekunden Überlauf */
+    zeit_minuten_bcd = bcd_plus_eins (zeit_minuten_bcd, 0x60);
+    if (zeit_minuten_bcd == 0) { /* Miuten-Überlauf */
+      zeit_stunden_bcd = bcd_plus_eins (zeit_stunden_bcd, 0x24);
+    }
+  }
+  return 0;
+} /* zeit_weiter_eine_sekunde */
+
+
+/******************************************************************************/
+/* Wetterdaten vom Sensor holen und anzeigen */
+
+
+void wetterdaten_anzeigen ()
+{
+  bmp280_read ();
+
+  /* Temperatur */
+  lcd_set_cursor (0, 1);
+  if (bmp280_id) {
+    int32_to_text_decimal (bmp280_temp, 2);
+    insert_decimal_point10 ();
+    lcd_print_text (text_buffer + TEXT_BUFFER_RIGHT - 4);
+    lcd_print_char (0xdf);
+    lcd_print_char ('C');
+  }
+
+  /* Luftdruck */
+  lcd_set_cursor (10, 2);
+  if (bmp280_id) {
+    int32_to_text_decimal (bmp280_pres, 2);
+    insert_decimal_point10 ();
+    lcd_print_text (text_buffer + TEXT_BUFFER_RIGHT - 5);
+    lcd_print_text ("hPa");
+  }
+
+  /* Luftfeuchte */
+  lcd_set_cursor (10, 1);
+  if (bmp280_id == BME280_ID_VAL) {
+    int32_to_text_decimal (bmp280_humi, 2);
+    insert_decimal_point10 ();
+    lcd_print_text (text_buffer + TEXT_BUFFER_RIGHT - 5);
+    lcd_print_text ("%RH");
+  }
+} /* wetterdaten anzeigen */
 
 
 /******************************************************************************/
@@ -142,7 +224,7 @@ int main (void)
     uint8_t  taste = 0;       // Tastencode
     uint8_t  rxchar = 0;
     uint16_t time_ms = 0;
-    //int32_t x_abs = 0;
+    uint8_t  zeit_anzeigen = 0;
 
     taste = tastenabfrage ();
 
@@ -173,99 +255,47 @@ int main (void)
       z--;
     }
 
+    /* Uhr stellen */
+    if (taste == TASTE_SEK) {
+      zeit_sekunden_bcd = 0x00;
+      time_1000ms_prev = time_ms;
+      zeit_anzeigen = 1;
+    }
 
-    // if (taste == TASTE_SEK) {
-    //   zeit_sekunden_bcd = 0x00;
-    //   zeit_anzeigen = 1;
-    // }
-    //
-    // else if (taste == TASTE_MIN) {
-    //   zeit_minuten_bcd = bcd_plus_eins (zeit_minuten_bcd, 0x60);
-    //   zeit_anzeigen = 1;
-    // }
-    //
-    // else if (taste == TASTE_H) {
-    //   zeit_stunden_bcd = bcd_plus_eins (zeit_stunden_bcd, 0x24);
-    //   zeit_anzeigen = 1;
-    // }
-    //
-    // else if (taste == TASTE_STORE_RTC) {
-    //   rtc_write ();
-    // }
+    else if (taste == TASTE_MIN) {
+      zeit_minuten_bcd = bcd_plus_eins (zeit_minuten_bcd, 0x60);
+      zeit_anzeigen = 1;
+    }
 
+    else if (taste == TASTE_H) {
+      zeit_stunden_bcd = bcd_plus_eins (zeit_stunden_bcd, 0x24);
+      zeit_anzeigen = 1;
+    }
+
+    else if (taste == TASTE_STORE_RTC) {
+      rtc_write ();
+    }
 
     time_ms = millis ();
 
     if ((time_ms - time_1000ms_prev) >= 1000) {
-      //uart0_tx ('*');
-      //PORTB ^= (1 << 7);
-      //time_1000ms_prev = time_ms;
-
       time_1000ms_prev += 1000;
 
-      update_time ();
+      zeit_weiter_eine_sekunde ();
+      zeit_anzeigen = 1;
 
+      wetterdaten_anzeigen ();
+    }
+
+    if (zeit_anzeigen != 0) {
       lcd_set_cursor (12, 0);
-      //lcd_print_text (uint16_to_text_hex (time_ms));
-      //lcd_print_text (uint16_to_text_decimal (time_ms));
-      lcd_print_text (rightmost (int32_to_text_decimal (time_hour, 2), 2));
+      bcd_zaehler_anzeigen (zeit_stunden_bcd);
       lcd_print_char (':');
-      lcd_print_text (rightmost (int32_to_text_decimal (time_minutes, 2), 2));
+      bcd_zaehler_anzeigen (zeit_minuten_bcd);
       lcd_print_char (':');
-      lcd_print_text (rightmost (int32_to_text_decimal (time_seconds, 2), 2));
-      //lcd_print_text (uint16_to_text_decimal (12345));
+      bcd_zaehler_anzeigen (zeit_sekunden_bcd);
 
-      // lcd_set_cursor (12, 2);
-      // lcd_print_text (uint16_to_text_hex (time_ms));
-      // lcd_set_cursor (12, 3);
-      // lcd_print_text (uint16_to_text_hex (time_1000ms_prev));
-
-      bmp280_read ();
-
-      /* Temperatur */
-      lcd_set_cursor (0, 1);
-      if (bmp280_id) {
-        // lcd_print_text (int16_to_text_decimal (bmp280_temp / 100));
-        // lcd_print_text (".");
-        // x_abs = bmp280_temp;
-        // if (x_abs < 0) x_abs = -x_abs;
-        // lcd_print_text (uint8_to_text_decimal (x_abs % 100));
-        lcd_print_text (rightmost (insert_decimal_point (int32_to_text_decimal (bmp280_temp, 3), 2), 6));
-
-        //lcd_print_char (' ');
-        lcd_print_char (0xdf);
-        lcd_print_char ('C');
-      }
-      else {
-        lcd_print_text ("   xx.xx");
-      }
-
-      // lcd_set_cursor (4, 1);
-      // //lcd_print_text (int32_to_text_decimal (bmp280_temp));
-      // lcd_print_text (insert_decimal_point (int32_to_text_decimal (bmp280_temp), 2));
-
-
-      /* Luftfeuchte */
-      lcd_set_cursor (10, 1);
-      if (bmp280_id == BME280_ID_VAL) {
-        lcd_print_text (rightmost (insert_decimal_point (int32_to_text_decimal (bmp280_humi, 4), 3), 7));
-        lcd_print_text ("%RH");
-      }
-
-      /* Luftdruck */
-      lcd_set_cursor (10, 2);
-      if (bmp280_id) {
-        // lcd_print_text (int16_to_text_decimal (bmp280_pres / 100));
-        // lcd_print_text (".");
-        // x_abs = bmp280_pres;
-        // if (x_abs < 0) x_abs = -x_abs;
-        // lcd_print_text (uint8_to_text_decimal (x_abs % 100));
-        lcd_print_text (rightmost (insert_decimal_point (int32_to_text_decimal (bmp280_pres, 3), 2), 7));
-        lcd_print_text ("hPa");
-      }
-      else {
-        lcd_print_text ("  xxx.xx");
-      }
+      zeit_anzeigen = 0;
     }
 
     if ((time_ms - time_100ms_prev) >= 100) {
@@ -309,17 +339,19 @@ int main (void)
                     break;
 
           case 'B':
-          case 'm': time_minutes += 1;
-                    if (time_minutes >= 60) time_minutes = 0;
+          case 'm': zeit_minuten_bcd = bcd_plus_eins (zeit_minuten_bcd, 0x60);
+                    zeit_anzeigen = 1;
                     break;
 
-          case 'C':
-          case 'h': time_hour += 1;
-                    if (time_hour >= 24) time_hour = 0;
+          case 'H':
+          case 'h': zeit_stunden_bcd = bcd_plus_eins (zeit_stunden_bcd, 0x24);
+                    zeit_anzeigen = 1;
                     break;
 
-          case 's': time_seconds = 0;
+          case 'S':
+          case 's': zeit_sekunden_bcd = 0x00;
                     time_1000ms_prev = time_ms;
+                    zeit_anzeigen = 1;
                     break;
 
           case 'b': bmp280_read ();
@@ -360,19 +392,15 @@ int main (void)
           case '#': { uint8_t min = 0;
                       uint8_t hour = 0;
 
-                      min = (settime & 0xf);
-                      settime >>= 4;
-                      min += (settime & 0xf) * 10;
-                      settime >>= 4;
+                      min = (settime & 0xff);
+                      settime >>= 8;
+                      hour = (settime & 0xff);
 
-                      hour = (settime & 0xf);
-                      settime >>= 4;
-                      hour += (settime & 0xf) * 10;
-
-                      if ((hour < 24) && (min < 60)) {
-                        time_seconds = 0;
-                        time_minutes = min;
-                        time_hour    = hour;
+                      if ((hour < 0x24) && (min < 0x60)) {
+                        zeit_minuten_bcd = min;
+                        zeit_stunden_bcd = hour;
+                        zeit_sekunden_bcd = 0x00;
+                        time_1000ms_prev = time_ms;
 
                         rtc_write ();
                       }
