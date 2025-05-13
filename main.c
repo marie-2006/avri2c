@@ -12,11 +12,10 @@
 #define OPMODE_NORMAL   0
 #define OPMODE_SETTIME  1
 
-#define TASTE_NIX               (0)
+#define TASTE_NIX               (0)              // Tasten definieren
 #define TASTE_SEK               (1)
 #define TASTE_MIN               (2)
 #define TASTE_H                 (3)
-#define TASTE_STORE_RTC         (4)
 #define TASTE_STORE_RTC         (4)
 #define TASTE_AUSGABE           (5)
 #define TASTE_ZEAHLER           (6)
@@ -61,7 +60,9 @@ uint8_t tastenabfrage (void)
   else if (tasten_neu & (1 << 6)) taste = TASTE_H;
   else if (tasten_neu & (1 << 7)) taste = TASTE_AUSGABE;
   else if (tasten_neu & (1 << 0)) taste = TASTE_ZEAHLER;
+  else if (tasten_neu & (1 << 3)) taste = TASTE_STORE_RTC;
   else if (tasten_neu & (1 << 1)) taste = TASTE_ZEAHLER_ZURUECK;
+
 
 
   tasten_feld_prev = tasten_feld;
@@ -228,6 +229,8 @@ int main (void)
 
     taste = tastenabfrage ();
 
+
+
     if (taste == TASTE_SEK) {
       serial_print_text ("K: ");
       serial_print_text (uint32_to_text_hex (taste));
@@ -274,6 +277,11 @@ int main (void)
 
     else if (taste == TASTE_STORE_RTC) {
       rtc_write ();
+      z = 5;
+      lcd_backlight_off ();
+      serial_print_text ("rtc stored");
+      //serial_print_text ( uint32_to_text (z) );
+      serial_print_text ("\r\n");
     }
 
     time_ms = millis ();
@@ -299,8 +307,22 @@ int main (void)
     }
 
     if ((time_ms - time_100ms_prev) >= 100) {
-      PORTB ^= (1 << 7);
+      //PORTB ^= (1 << 7);
       time_100ms_prev = time_ms;
+
+      if (z > 0) {
+        serial_print_text ("z=");
+        serial_print_text ( uint32_to_text (z) );
+        serial_print_text ("\r\n");
+        z--;
+
+        if (z == 0) {
+          lcd_backlight_on ();
+
+          serial_print_text ("NULL");
+          serial_print_text ("\r\n");
+        }
+      }
     }
 
     if ((time_ms - time_10ms_prev) >= 10) { /* alle 10ms */
